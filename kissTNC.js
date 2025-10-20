@@ -165,17 +165,37 @@ var kissTNC = function(args) {
 	this.baudRate		= args.baudRate;
 	
 	var dataBuffer = [];
-		
+	
+	/**
+ * Creates a new Uint8Array based on two different Uint8Array
+ *
+ * @private
+ * @param {Uint8Array} buffer1 The first buffer.
+ * @param {Uint8Array} buffer2 The second buffer.
+ * @return {Uint8Array} The new ArrayBuffer created out of the two.
+ */
+function _appendBuffer(buffer1, buffer2) {
+  var tmp = new Uint8Array(buffer1.length + buffer2.length);
+  tmp.set(buffer1, 0);
+  tmp.set(buffer2, buffer1.length);
+  return tmp;
+};
+
 	var sendFrame = function(command, data) {
-		if(!(data instanceof Array))
-			throw "ax25.kissTNC: Invalid send data";
-		data.unshift(command);
+		//if(!(data instanceof Uint8Array))
+	//		throw "ax25.kissTNC: Invalid send data";
+		/*data.unshift(command);
 		data.unshift(ax25.kissDefs.FEND);
-		data.push(ax25.kissDefs.FEND);
+		data.push(ax25.kissDefs.FEND);*/
+
+		let front = new Uint8Array([ax25.kissDefs.FEND, command])
+		let back = new Uint8Array([ax25.kissDefs.FEND])
+		let finalData = _appendBuffer(front, _appendBuffer(data, back))
+
 		serialHandle.write(
-			data,
+			finalData,
 			function(err, result) {
-				if(typeof err != "undefined")
+				if(err)
 					self.emit("error", "kissTNC: Send error: " + err);
 				if(typeof result != "undefined")
 					self.emit("sent", "kissTNC: Send result: " + result);
@@ -207,7 +227,8 @@ var kissTNC = function(args) {
 	}
 	
 	var serialHandle = new SerialPort(
-		properties.serialPort, {
+		{
+			path: properties.serialPort,
 			'baudRate' : properties.baudRate
 		}
 	);
@@ -258,8 +279,8 @@ var kissTNC = function(args) {
 	}
 	
 	this.send = function(data) {
-		if(!(data instanceof Array))
-			throw "kissTNC.send: data type mismatch.";
+		//if(!(data instanceof Array))
+		//	throw "kissTNC.send: data type mismatch.";
 		sendFrame(ax25.kissDefs.DATAFRAME, data);
 	}
 	
