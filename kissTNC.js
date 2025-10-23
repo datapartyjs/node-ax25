@@ -231,8 +231,8 @@ function _appendBuffer(buffer1, buffer2) {
 				dataBuffer.push(data[d]);
 			if(!escaped && data[d] == ax25.kissDefs.FEND && dataBuffer.length > 1) {
 				self.emit("frame", {
-					port: (dataBuffer[0] >> 4) | 0xf,
-					command: dataBuffer[0] | 0xf,
+					port: (dataBuffer[0] >> 4) & 0xf,
+					command: dataBuffer[0] & 0xf,
 					data: dataBuffer.slice(1)
 				});
 				dataBuffer = [];
