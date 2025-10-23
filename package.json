@@ -17,7 +17,6 @@
 		"url" : "https://github.com/echicken/node-ax25.git"
 	},
 	"dependencies" : {
-		"serialport" : "^13.0.0"
 	},
 	"engines" : {
 		"node" : ">= 0.10.24"
