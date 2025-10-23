@@ -191,7 +191,7 @@ function _appendBuffer(buffer1, buffer2) {
 		data.push(ax25.kissDefs.FEND);*/
 
 		if(port==null){
-			port = properites.activePort
+			port = properties.activePort
 		}
 
 		let front = new Uint8Array([ax25.kissDefs.FEND, command])
