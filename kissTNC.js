@@ -209,9 +209,15 @@ function _appendBuffer(buffer1, buffer2) {
 		);
 	}
 	
-	var dataHandler = (data) => {
+	var dataHandler = (data=null) => {
 		var str = "";
 		var escaped = false;
+
+		if(!data && this.serialHandle.readBytes){
+			let value = this.serialHandle.readBytes()
+			data = value
+		}
+
 		for(var d = 0; d < data.length; d++) {
 			if(data[d] == ax25.kissDefs.FESC) {
 				escaped = true;
@@ -279,7 +285,7 @@ function _appendBuffer(buffer1, buffer2) {
 		
 	this.serialHandle.on(
 		"data",
-		function(data) {
+		(data)=> {
 			dataHandler(data);
 		}
 	);
