@@ -1,6 +1,6 @@
 var util		= require("util");
 var events		= require("events");
-var SerialPort	= require("serialport").SerialPort;
+//var SerialPort	= require("serialport").SerialPort;
 var ax25		= require("./index.js");
 
 var kissTNC = function(args) {
@@ -10,6 +10,7 @@ var kissTNC = function(args) {
 
 	var properties = {
 		'serialPort'	: 0,
+		'activePort'  : 0,
 		'baudRate'		: 0,
 		'txDelay'		: 50,
 		'persistence'	: 63,
@@ -163,6 +164,7 @@ var kissTNC = function(args) {
 	
 	this.serialPort		= args.serialPort;
 	this.baudRate		= args.baudRate;
+	this.serialHandle = args.serialHandle
 	
 	var dataBuffer = [];
 	
@@ -181,18 +183,22 @@ function _appendBuffer(buffer1, buffer2) {
   return tmp;
 };
 
-	var sendFrame = function(command, data) {
+	var sendFrame = (command, data, port=null)=>{
 		//if(!(data instanceof Uint8Array))
 	//		throw "ax25.kissTNC: Invalid send data";
 		/*data.unshift(command);
 		data.unshift(ax25.kissDefs.FEND);
 		data.push(ax25.kissDefs.FEND);*/
 
+		if(port==null){
+			port = properties.activePort
+		}
+
 		let front = new Uint8Array([ax25.kissDefs.FEND, command])
 		let back = new Uint8Array([ax25.kissDefs.FEND])
 		let finalData = _appendBuffer(front, _appendBuffer(data, back))
 
-		serialHandle.write(
+		this.serialHandle.write(
 			finalData,
 			function(err, result) {
 				if(err)
@@ -203,9 +209,15 @@ function _appendBuffer(buffer1, buffer2) {
 		);
 	}
 	
-	var dataHandler = function(data) {
+	var dataHandler = (data=null) => {
 		var str = "";
 		var escaped = false;
+
+		if(!data && this.serialHandle.readBytes){
+			let value = this.serialHandle.readBytes()
+			data = value
+		}
+
 		for(var d = 0; d < data.length; d++) {
 			if(data[d] == ax25.kissDefs.FESC) {
 				escaped = true;
@@ -218,7 +230,11 @@ function _appendBuffer(buffer1, buffer2) {
 			if(escaped || data[d] != ax25.kissDefs.FEND)
 				dataBuffer.push(data[d]);
 			if(!escaped && data[d] == ax25.kissDefs.FEND && dataBuffer.length > 1) {
-				self.emit("frame", dataBuffer.slice(1));
+				self.emit("frame", {
+					port: (dataBuffer[0] >> 4) & 0xf,
+					command: dataBuffer[0] & 0xf,
+					data: dataBuffer.slice(1)
+				});
 				dataBuffer = [];
 			}
 			if(escaped)
@@ -226,21 +242,21 @@ function _appendBuffer(buffer1, buffer2) {
 		}
 	}
 	
-	var serialHandle = new SerialPort(
+	/*var serialHandle = new SerialPort(
 		{
 			path: properties.serialPort,
 			'baudRate' : properties.baudRate
 		}
-	);
+	);*/
 	
-	serialHandle.on(
+	this.serialHandle.on(
 		"error",
 		function(err) {
 			self.emit("error", "kissTNC: Serial port error: " + err);
 		}
 	);
 	
-	serialHandle.on(
+	this.serialHandle.on(
 		"open",
 		function() {
 			for(var a in args) {
@@ -260,16 +276,16 @@ function _appendBuffer(buffer1, buffer2) {
 		}
 	);
 	
-	serialHandle.on(
+	this.serialHandle.on(
 		"close",
 		function() {
 			self.emit("closed");
 		}
 	);
 		
-	serialHandle.on(
+	this.serialHandle.on(
 		"data",
-		function(data) {
+		(data)=> {
 			dataHandler(data);
 		}
 	);
@@ -289,7 +305,7 @@ function _appendBuffer(buffer1, buffer2) {
 	}
 
 	this.close = function() {
-		serialHandle.close();
+		this.serialHandle.close();
 	}
 	
 }
