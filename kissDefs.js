@@ -15,6 +15,8 @@ var kissDefs = {
 	TXTAIL		: 4,	// TX tail
 	FULLDUPLEX	: 5,	// Full Duplex
 	SETHARDWARE	: 6,	// Set Hardware
+	ACKMODE		: 12,	// 0x0C: data frame with a 2-byte id; the TNC acks it once sent (BPQ ACKMODE)
+	RXINFO		: 13,	// 0x0D: MeshTNC received frame with seq, RSSI, SNR and RX time in front
 	RETURN		: 255	// Exit KISS mode
 
 }
