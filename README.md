@@ -15,4 +15,5 @@ The Session object is pretty broken, so I wouldn't try to do any connected-mode 
  * `command(text)` - send a CLI command and resolve with the reply text; `get(name)` resolves with the value of `get <name>`
  * `enterKISS()` - back to KISS mode; `assumeKISS()` parses input as KISS again without asking the TNC
  * `sendRaw(command, data)` - any KISS command with a raw body
+ * `wakePreamble` / `wakeIdleMs` options (or `setWakePreamble(bytes, idleMs)`) - for TNCs that sleep between frames: after `wakeIdleMs` (default 150) without writing, a KISS frame is preceded by `wakePreamble` FEND bytes, which wake the TNC and are ignored as empty frames. Off by default
  * received RX info frames (MeshTNC `set kiss rxinfo on`) arrive as `frame` events with command `kissDefs.RXINFO`

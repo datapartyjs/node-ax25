@@ -172,6 +172,14 @@ var kissTNC = function(args) {
 	// 'kiss': serial data is parsed as KISS frames. 'cli': it's parsed as text lines (the
 	// TNC's command line, see enterCLI() / command() / enterKISS()).
 	var mode = (args.mode == "cli") ? "cli" : "kiss";
+
+	// Wake-up run for TNCs that sleep between frames (MeshTNC 'set powersave on'): when
+	// nothing has been written for wakeIdleMs, a KISS frame goes out after wakePreamble FEND
+	// bytes. The TNC loses the bytes that wake it; FENDs on their own are empty frames that
+	// any KISS TNC ignores. Off unless wakePreamble > 0. Text (CLI) writes never get one.
+	var wakePreamble = Math.max(0, args.wakePreamble | 0);
+	var wakeIdleMs = (args.wakeIdleMs === undefined) ? 150 : Number(args.wakeIdleMs);
+	var lastWriteAt = 0;
 	var lineBuffer = "";
 	var lineWaiters = [];		// pending { match(line) -> bool, resolve, reject, timer }
 	var commandChain = Promise.resolve();	// CLI operations run one at a time
@@ -211,6 +219,7 @@ function _appendBuffer(buffer1, buffer2) {
 	}
 
 	var writeSerial = (bytes) => {
+		lastWriteAt = Date.now();
 		this.serialHandle.write(
 			bytes,
 			function(err, result) {
@@ -234,6 +243,11 @@ function _appendBuffer(buffer1, buffer2) {
 		let front = new Uint8Array([ax25.kissDefs.FEND, command])
 		let back = new Uint8Array([ax25.kissDefs.FEND])
 		let finalData = _appendBuffer(front, _appendBuffer(escapeKISS(data), back))
+
+		let now = Date.now()
+		if(wakePreamble > 0 && now - lastWriteAt > wakeIdleMs)
+			finalData = _appendBuffer(new Uint8Array(wakePreamble).fill(ax25.kissDefs.FEND), finalData)
+		lastWriteAt = now
 
 		this.serialHandle.write(
 			finalData,
@@ -468,6 +482,12 @@ function _appendBuffer(buffer1, buffer2) {
 			writeSerial(Buffer.from("serial mode kiss\r"));
 			return entered.then(function() {});
 		});
+	}
+
+	//	wake-up run before KISS frames after an idle gap (see wakePreamble above); 0 = off
+	this.setWakePreamble = function(bytes, idleMs) {
+		wakePreamble = Math.max(0, bytes | 0);
+		if(idleMs !== undefined) wakeIdleMs = Number(idleMs);
 	}
 
 	//	Treat input as KISS again without asking the TNC (e.g. it never answered on the CLI).
